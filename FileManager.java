@@ -1,10 +1,19 @@
 // FileManager.java
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class FileManager {
     private static final String EVENT_FILE = "events.csv";
     private static final String USER_FILE  = "users.csv";
+
+    private static final byte[] UTF8_BOM = { (byte)0xEF, (byte)0xBB, (byte)0xBF };
+
+    private static String stripBom(String s) {
+        if (s != null && s.length() > 0 && (int) s.charAt(0) == 0xFEFF)
+            return s.substring(1);
+        return s;
+    }
 
     // ── 活動資料 ──────────────────────────────────────────────────────────────
 
@@ -14,11 +23,13 @@ public class FileManager {
         File file = new File(EVENT_FILE);
         if (!file.exists()) return events;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             int lineNumber = 0;
             while ((line = br.readLine()) != null) {
                 lineNumber++;
+                if (lineNumber == 1) line = stripBom(line);
                 if (line.trim().isEmpty()) continue;
                 String[] data = line.split(",");
                 try {
@@ -51,8 +62,11 @@ public class FileManager {
     }
 
     public static void saveEvents(List<Event> events) {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(EVENT_FILE))) {
+        try (FileOutputStream fos = new FileOutputStream(EVENT_FILE)) {
+            fos.write(UTF8_BOM);
+            PrintWriter pw = new PrintWriter(new OutputStreamWriter(fos, StandardCharsets.UTF_8));
             for (Event e : events) pw.println(e.toCSV());
+            pw.flush();
             System.out.println("活動資料已成功儲存至 " + EVENT_FILE);
         } catch (IOException e) {
             System.out.println("寫入活動檔發生錯誤：" + e.getMessage());
@@ -67,9 +81,13 @@ public class FileManager {
         File file = new File(USER_FILE);
         if (!file.exists()) return users;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
+            int lineNumber = 0;
             while ((line = br.readLine()) != null) {
+                lineNumber++;
+                if (lineNumber == 1) line = stripBom(line);
                 if (line.trim().isEmpty()) continue;
                 String[] data = line.split(",");
                 if (data.length == 3) users.add(data);
@@ -81,8 +99,11 @@ public class FileManager {
     }
 
     public static void saveUsers(List<String[]> users) {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(USER_FILE))) {
+        try (FileOutputStream fos = new FileOutputStream(USER_FILE)) {
+            fos.write(UTF8_BOM);
+            PrintWriter pw = new PrintWriter(new OutputStreamWriter(fos, StandardCharsets.UTF_8));
             for (String[] u : users) pw.println(u[0] + "," + u[1] + "," + u[2]);
+            pw.flush();
         } catch (IOException e) {
             System.out.println("寫入使用者檔發生錯誤：" + e.getMessage());
         }
