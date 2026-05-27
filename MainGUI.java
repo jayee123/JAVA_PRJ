@@ -439,7 +439,11 @@ public class MainGUI extends JFrame {
             int cap; try { cap=Integer.parseInt(fCap.getText().trim()); if(cap<=0) throw new NumberFormatException(); }
             catch(NumberFormatException ex) { err("名額必須為正整數！"); return; }
             if (!dt.matches("\\d{4}-\\d{2}-\\d{2}")) { err("日期格式錯誤（YYYY-MM-DD）！"); return; }
+            try { java.time.LocalDate.parse(dt); }
+            catch (java.time.format.DateTimeParseException ex) { err("日期無效！月份需為 01-12，日期需在當月正確範圍內。"); return; }
             if (!tm.matches("\\d{2}:\\d{2}"))         { err("時間格式錯誤（HH:MM）！"); return; }
+            try { java.time.LocalTime.parse(tm); }
+            catch (java.time.format.DateTimeParseException ex) { err("時間無效！小時需為 00-23，分鐘需為 00-59。"); return; }
             eventList.add(new Event(id, ti, loc, cap, currentUser.getId(), dt, tm));
             FileManager.saveEvents(eventList);
             refreshOrgTable();
@@ -498,11 +502,15 @@ public class MainGUI extends JFrame {
                 } catch(NumberFormatException ex) { err("名額必須為整數！"); return; }
             }
             if (!dt.isEmpty()) {
-                if (!dt.matches("\\d{4}-\\d{2}-\\d{2}")) { err("日期格式錯誤！"); return; }
+                if (!dt.matches("\\d{4}-\\d{2}-\\d{2}")) { err("日期格式錯誤（YYYY-MM-DD）！"); return; }
+                try { java.time.LocalDate.parse(dt); }
+                catch (java.time.format.DateTimeParseException ex) { err("日期無效！月份需為 01-12，日期需在當月正確範圍內。"); return; }
                 e.setEventDate(dt);
             }
             if (!tm.isEmpty()) {
-                if (!tm.matches("\\d{2}:\\d{2}")) { err("時間格式錯誤！"); return; }
+                if (!tm.matches("\\d{2}:\\d{2}")) { err("時間格式錯誤（HH:MM）！"); return; }
+                try { java.time.LocalTime.parse(tm); }
+                catch (java.time.format.DateTimeParseException ex) { err("時間無效！小時需為 00-23，分鐘需為 00-59。"); return; }
                 e.setEventTime(tm);
             }
             FileManager.saveEvents(eventList);
@@ -539,7 +547,11 @@ public class MainGUI extends JFrame {
         Event e = selected(orgTable, orgModel);
         if (e == null) return;
         String fname = "participants_" + e.getId() + ".csv";
-        try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(fname))) {
+        try (java.io.PrintWriter pw = new java.io.PrintWriter(
+                new java.io.OutputStreamWriter(
+                    new java.io.FileOutputStream(fname),
+                    java.nio.charset.StandardCharsets.UTF_8))) {
+            pw.print("﻿"); // UTF-8 BOM，讓 Excel 正確識別編碼
             pw.println("StudentID");
             for (String sid : e.getParticipantIds()) pw.println(sid);
             info("報名名單已匯出至：" + fname);
